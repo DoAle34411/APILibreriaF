@@ -3,10 +3,14 @@ using APILibreriaF.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace APILibreriaF.Controllers
 {
-    public class ProductoController : Controller
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ProductoController : ControllerBase
     {
         private readonly ApplicationDBContext _db;
 
@@ -15,84 +19,86 @@ namespace APILibreriaF.Controllers
             _db = db;
         }
 
-        // GET: api/<ProductoController>
+        // GET: api/Producto
         [HttpGet]
-        public async Task<IActionResult> Get()
+        public async Task<ActionResult<IEnumerable<Producto>>> GetProductos()
         {
-            List<Producto> products = await _db.producto.ToListAsync();
-            return Ok(products);
+            return await _db.producto.ToListAsync();
         }
 
-        // GET api/<ProductoController>/5
+        // GET: api/Producto/5
         [HttpGet("{id}")]
-        public async Task<IActionResult> Get(int id)
+        public async Task<ActionResult<Producto>> GetProducto(int id)
         {
-            Producto producto = await _db.producto.FirstOrDefaultAsync(x => x.IdProducto == id);
+            var producto = await _db.producto.FindAsync(id);
+
             if (producto == null)
-            {
-                return BadRequest();
-            }
-
-            return Ok(producto);
-
-        }
-
-        // POST api/<ProductoController>
-        [HttpPost]
-        public async Task<IActionResult> Post([FromBody] Producto producto)
-        {
-            Producto producto2 = await _db.producto.FirstOrDefaultAsync(x => x.IdProducto == producto.IdProducto);
-            if (producto == null || producto2 != null)
-            {
-                return BadRequest("Ya existe :( ");
-            }
-            else
-            {
-                await _db.producto.AddAsync(producto);
-                await _db.SaveChangesAsync();
-                return Ok(producto);
-            }
-
-        }
-
-        // PUT api/<ProductoController>/5
-        [HttpPut("{IdProducto}")]
-        public async Task<IActionResult> Put(int IdProducto, [FromBody] Producto producto)
-        {
-            Producto producto2 = await _db.producto.FirstOrDefaultAsync(x => x.IdProducto == IdProducto);
-            if (producto == null && producto2 != null)
             {
                 return NotFound();
             }
-            else
-            {
 
-                producto2.Cantidad = producto.Cantidad != null ? producto.Cantidad : producto2.Cantidad;
-                producto2.Descripcion = producto.Descripcion != null ? producto.Descripcion : producto2.Descripcion;
-                producto2.Nombre = producto.Nombre != null ? producto.Nombre : producto2.Nombre;
-                _db.producto.Update(producto2);
-                await _db.SaveChangesAsync();
-                return Ok();
-            }
-
+            return producto;
         }
 
-        // DELETE api/<ProductoController>/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
+        // POST: api/Producto
+        [HttpPost]
+        public async Task<ActionResult<Producto>> PostProducto(Producto producto)
         {
-            Producto producto = await _db.producto.FirstOrDefaultAsync(x => x.IdProducto == id);
-            if (producto == null)
+            _db.producto.Add(producto);
+            await _db.SaveChangesAsync();
+
+            return CreatedAtAction("GetProducto", new { id = producto.IdProducto }, producto);
+        }
+
+        // PUT: api/Producto/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutProducto(int id, Producto producto)
+        {
+            if (id != producto.IdProducto)
             {
                 return BadRequest();
             }
-            else
+
+            _db.Entry(producto).State = EntityState.Modified;
+
+            try
             {
-                _db.producto.Remove(producto);
                 await _db.SaveChangesAsync();
-                return NoContent();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ProductoExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
             }
 
+            return NoContent();
+        }
+
+        // DELETE: api/Producto/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteProducto(int id)
+        {
+            var producto = await _db.producto.FindAsync(id);
+            if (producto == null)
+            {
+                return NotFound();
+            }
+
+            _db.producto.Remove(producto);
+            await _db.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        private bool ProductoExists(int id)
+        {
+            return _db.producto.Any(e => e.IdProducto == id);
         }
     }
 }
